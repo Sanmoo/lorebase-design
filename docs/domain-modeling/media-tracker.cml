@@ -1,0 +1,541 @@
+/* ============================================
+   Media Tracker - Domain Model (MVP Séries)
+   ============================================
+
+   Este arquivo contém a modelagem DDD completa do sistema
+   Media Tracker, focado no MVP de rastreamento de séries.
+
+   Subdomínios:
+   1. SeriesCatalog (SUPPORTING_DOMAIN) - Dados de séries
+   2. UserTracking (CORE_DOMAIN) - Rastreamento pessoal
+   3. Recommendation (CORE_DOMAIN) - Sistema de recomendação
+   4. UserExperience (CORE_DOMAIN) - Experiência do usuário
+
+   Bounded Contexts:
+   - SeriesCatalogContext (Backend)
+   - UserTrackingContext (Backend)
+   - RecommendationContext (Backend)
+   - ExperienceContext (Frontend)
+   - ExperienceBFFContext (Backend for Frontend)
+
+   Gerado em: 2026-04-18
+   ============================================ */
+
+// ---- Domínio e Subdomínios ----
+
+Domain MediaTracker {
+  domainVisionStatement = "Plataforma de rastreamento pessoal de séries, jogos, filmes e outros conteúdos de entretenimento, com foco em experiência do usuário."
+
+  Subdomain SeriesCatalog {
+    type = SUPPORTING_DOMAIN
+    domainVisionStatement = "Gerencia informações sobre séries, temporadas e episódios. Dados estruturais do conteúdo."
+
+    Entity Series {
+      String title
+      String description
+      String genre
+      int totalSeasons
+    }
+  }
+
+  Subdomain UserTracking {
+    type = CORE_DOMAIN
+    domainVisionStatement = "Permite ao usuário rastrear seu progresso, avaliar conteúdo e manter listas pessoais. Diferencial competitivo na organização pessoal."
+
+    Entity TrackedSeries {
+      String seriesId
+      String status
+      int userRating
+    }
+  }
+
+  Subdomain Recommendation {
+    type = CORE_DOMAIN
+    domainVisionStatement = "Sugere conteúdo quando o usuário está ocioso, baseado em sua lista de interesse. Diferencial na descoberta de conteúdo."
+  }
+
+  Subdomain UserExperience {
+    type = CORE_DOMAIN
+    domainVisionStatement = "Responsável pela interface, interações, navegação e apresentação. Diferencial competitivo na usabilidade e experiência do usuário."
+  }
+}
+
+// ---- Bounded Contexts Backend ----
+
+BoundedContext SeriesCatalogContext implements SeriesCatalog {
+  type = FEATURE
+  domainVisionStatement = "Contexto responsável por gerenciar dados de séries, temporadas e episódios. Fonte da verdade sobre conteúdo disponível."
+  implementationTechnology = "Go / AWS Lambda"
+  responsibilities = "Series", "Seasons", "Episodes", "Metadata"
+  knowledgeLevel = CONCRETE
+
+  Aggregate Series {
+    responsibilities = "Informações da série e suas temporadas"
+    likelihoodForChange = NORMAL
+    contentVolatility = RARELY
+
+    Entity Series {
+      aggregateRoot
+
+      - SeriesId seriesId
+      String title
+      String description
+      String genre
+      int totalSeasons
+      int releaseYear
+      String posterUrl
+      - List<Season> seasons
+      Date addedAt
+
+      def void addSeason(@Season season);
+      def void updateMetadata(String title, String description, String genre);
+      def int getTotalEpisodes();
+
+      Repository SeriesRepository {
+        @Series findById(@SeriesId seriesId);
+        List<@Series> findByTitle(String query);
+        List<@Series> findByGenre(String genre);
+        List<@Series> findAll();
+        save(@Series series);
+        delete(@SeriesId seriesId);
+      }
+    }
+
+    Entity Season {
+      int seasonNumber
+      int totalEpisodes
+      int releaseYear
+    }
+
+    ValueObject SeriesId {
+      String id key
+    }
+
+    Service SeriesService {
+      @SeriesId createSeries(@Series series) : write [ -> CREATED];
+      @Series getSeries(@SeriesId seriesId) : read-only;
+      void updateSeries(@SeriesId seriesId, @Series series) : write;
+      List<@Series> searchSeries(String query) : read-only;
+      List<@Series> getSeriesByGenre(String genre) : read-only;
+    }
+
+    enum SeriesLifecycle {
+      aggregateLifecycle
+      CREATED, ACTIVE, ARCHIVED
+    }
+  }
+}
+
+BoundedContext UserTrackingContext implements UserTracking {
+  type = FEATURE
+  domainVisionStatement = "Contexto responsável por rastrear o progresso pessoal do usuário, status, avaliações e listas."
+  implementationTechnology = "Kotlin/Java, Spring Boot"
+  responsibilities = "Tracking", "Ratings", "UserLists", "Progress"
+  knowledgeLevel = CONCRETE
+
+  Aggregate UserSeriesTracking {
+    responsibilities = "Rastreamento de uma série específica para um usuário"
+    likelihoodForChange = OFTEN
+    contentVolatility = OFTEN
+
+    Entity TrackedSeries {
+      aggregateRoot
+
+      - TrackingId trackingId
+      - UserId userId
+      - SeriesId seriesId
+      TrackingStatus status
+      int currentSeason
+      int currentEpisode
+      - List<SeasonRating> seasonRatings
+      Integer seriesRating // 1-10, nullable
+      String seriesReview
+      Date addedAt
+      Date lastUpdated
+
+      def void updateStatus(@TrackingStatus newStatus);
+      def void updateProgress(int season, int episode);
+      def void rateSeries(int rating, String review);
+      def void rateSeason(int season, int rating);
+      def void markCompleted();
+      def void handleNewSeasonAvailable();
+
+      Repository TrackedSeriesRepository {
+        @TrackedSeries findById(@TrackingId trackingId);
+        List<@TrackedSeries> findByUser(@UserId userId);
+        @TrackedSeries findByUserAndSeries(@UserId userId, @SeriesId seriesId);
+        List<@TrackedSeries> findByStatus(@UserId userId, @TrackingStatus status);
+        save(@TrackedSeries tracking);
+        delete(@TrackingId trackingId);
+      }
+    }
+
+    ValueObject TrackingId {
+      String id key
+    }
+
+    ValueObject UserId {
+      String id key
+    }
+
+    ValueObject SeriesId {
+      String id key
+    }
+
+    ValueObject SeasonRating {
+      int seasonNumber key
+      int rating // 1-10
+      Date ratedAt
+    }
+
+    DomainEvent SeriesAddedToTracking {
+      - TrackingId trackingId
+      - UserId userId
+      - SeriesId seriesId
+      Date addedAt
+    }
+
+    DomainEvent StatusChanged {
+      - TrackingId trackingId
+      TrackingStatus oldStatus
+      TrackingStatus newStatus
+      Date changedAt
+    }
+
+    DomainEvent ProgressUpdated {
+      - TrackingId trackingId
+      int season
+      int episode
+      Date updatedAt
+    }
+
+    DomainEvent SeriesRated {
+      - TrackingId trackingId
+      int rating
+      String review
+      Date ratedAt
+    }
+
+    DomainEvent NewSeasonAvailable {
+      - TrackingId trackingId
+      int newSeasonNumber
+      Date detectedAt
+    }
+
+    DomainEvent AutoStatusChangedToWantToWatch {
+      - TrackingId trackingId
+      String reason
+      Date changedAt
+    }
+
+    Command AddSeriesToTracking {
+      - UserId userId
+      - SeriesId seriesId
+    }
+
+    Command UpdateStatus {
+      - TrackingId trackingId
+      TrackingStatus newStatus
+    }
+
+    Command UpdateProgress {
+      - TrackingId trackingId
+      int season
+      int episode
+    }
+
+    Command RateSeries {
+      - TrackingId trackingId
+      int rating // 1-10
+      String review
+    }
+
+    Command RateSeason {
+      - TrackingId trackingId
+      int season
+      int rating // 1-10
+    }
+
+    Service TrackingService {
+      @TrackingId addSeriesToTracking(@AddSeriesToTracking command) : write [ -> NOT_STARTED];
+      void updateStatus(@UpdateStatus command) : write;
+      void updateProgress(@UpdateProgress command) : write;
+      void rateSeries(@RateSeries command) : write;
+      void rateSeason(@RateSeason command) : write;
+      @TrackedSeries getTracking(@TrackingId trackingId) : read-only;
+      List<@TrackedSeries> getUserTracking(@UserId userId) : read-only;
+      List<@TrackedSeries> getUserTrackingByStatus(@UserId userId, @TrackingStatus status) : read-only;
+      void handleNewSeasonNotification(@SeriesId seriesId, int newSeasonNumber) : write;
+    }
+
+    enum TrackingStatus {
+      aggregateLifecycle
+      WANT_TO_WATCH,    // Quero Assistir
+      WATCHING,         // Assistindo
+      COMPLETED,        // Concluída
+      DROPPED           // Dropada
+    }
+  }
+}
+
+BoundedContext RecommendationContext implements Recommendation {
+  type = FEATURE
+  domainVisionStatement = "Contexto responsável por sugerir séries quando o usuário está ocioso, baseado em sua lista de interesse."
+  implementationTechnology = "Kotlin/Java, Spring Boot"
+  responsibilities = "Recommendations", "RandomSelection", "IdleSuggestions"
+  knowledgeLevel = CONCRETE
+
+  Aggregate RecommendationRequest {
+    responsibilities = "Geração e entrega de recomendações para usuários ociosos"
+    likelihoodForChange = NORMAL
+    contentVolatility = NORMAL
+
+    Entity Recommendation {
+      aggregateRoot
+
+      - RecommendationId recommendationId
+      - UserId userId
+      - SeriesId recommendedSeriesId
+      String reason // "Da sua lista Quero Assistir"
+      Date generatedAt
+      Date shownAt
+      boolean wasAccepted
+
+      def void markAsShown();
+      def void markAsAccepted();
+
+      Repository RecommendationRepository {
+        @Recommendation findById(@RecommendationId recommendationId);
+        @Recommendation findLatestForUser(@UserId userId);
+        List<@Recommendation> findHistoryForUser(@UserId userId);
+        save(@Recommendation recommendation);
+      }
+    }
+
+    ValueObject RecommendationId {
+      String id key
+    }
+
+    ValueObject UserId {
+      String id key
+    }
+
+    ValueObject SeriesId {
+      String id key
+    }
+
+    DomainEvent RecommendationGenerated {
+      - RecommendationId recommendationId
+      - UserId userId
+      - SeriesId seriesId
+      Date generatedAt
+    }
+
+    DomainEvent RecommendationShown {
+      - RecommendationId recommendationId
+      Date shownAt
+    }
+
+    DomainEvent RecommendationAccepted {
+      - RecommendationId recommendationId
+      Date acceptedAt
+    }
+
+    Command RequestRecommendation {
+      - UserId userId
+    }
+
+    Service RecommendationService {
+      @RecommendationId generateRecommendation(@RequestRecommendation command) : write [ -> GENERATED];
+      @Recommendation getLatestRecommendation(@UserId userId) : read-only;
+      void markRecommendationShown(@RecommendationId recommendationId) : write [ GENERATED -> SHOWN];
+      void markRecommendationAccepted(@RecommendationId recommendationId) : write [ SHOWN -> ACCEPTED];
+    }
+
+    enum RecommendationStatus {
+      aggregateLifecycle
+      GENERATED, SHOWN, ACCEPTED
+    }
+  }
+}
+
+// ---- Bounded Contexts Frontend/Experiência ----
+
+BoundedContext ExperienceContext implements UserExperience {
+  type = FEATURE
+  domainVisionStatement = "Aplicação frontend responsável pela interface do usuário, navegação, apresentação e interações. Foco em UX agradável e intuitiva."
+  implementationTechnology = "React/Vue/Angular, TypeScript"
+  responsibilities = "UI", "UX", "Navigation", "Presentation"
+  knowledgeLevel = CONCRETE
+
+  Aggregate UserInterface {
+    responsibilities = "Componentes de interface e estado da aplicação"
+
+    Entity ApplicationState {
+      aggregateRoot
+
+      - UserId userId
+      ViewState currentView
+      - NavigationState navigation
+      - UserPreferences preferences
+
+      def void navigateTo(@ViewState view);
+      def void updatePreferences(@UserPreferences preferences);
+    }
+
+    ValueObject UserId {
+      String id key
+    }
+
+    ValueObject ViewState {
+      String viewName key // "catalog", "my-list", "recommendation", "series-detail"
+      String params
+    }
+
+    ValueObject NavigationState {
+      String currentRoute
+      String previousRoute
+      List<String> history
+    }
+
+    ValueObject UserPreferences {
+      boolean darkMode
+      String language
+      String defaultSortOrder
+    }
+  }
+}
+
+BoundedContext ExperienceBFFContext implements UserExperience {
+  type = FEATURE
+  domainVisionStatement = "Backend for Frontend (BFF) que agrega dados dos contextos de domínio para fornecer APIs otimizadas para a interface do ExperienceContext."
+  implementationTechnology = "Kotlin/Java, Spring Boot"
+  responsibilities = "Aggregation", "API Composition", "FrontendOptimization"
+  knowledgeLevel = CONCRETE
+
+  Aggregate ExperienceAPI {
+    responsibilities = "Endpoints otimizados para o frontend"
+
+    Entity DashboardData {
+      aggregateRoot
+
+      - UserId userId
+      - List<SeriesSummary> watchingNow
+      - List<SeriesSummary> wantToWatch
+      - List<SeriesSummary> completed
+      RecommendationView currentRecommendation
+      CatalogSearchResult searchResults
+    }
+
+    ValueObject UserId {
+      String id key
+    }
+
+    ValueObject SeriesSummary {
+      - SeriesId seriesId
+      String title
+      String posterUrl
+      String status
+      int currentSeason
+      int currentEpisode
+      Integer userRating
+      int totalSeasons
+    }
+
+    ValueObject SeriesId {
+      String id key
+    }
+
+    ValueObject RecommendationView {
+      - SeriesId seriesId
+      String title
+      String posterUrl
+      String genre
+      String reason
+    }
+
+    ValueObject CatalogSearchResult {
+      List<@SeriesSummary> results
+      int totalCount
+      int page
+    }
+
+    DomainEvent DashboardLoaded {
+      - UserId userId
+      int watchingCount
+      int wantToWatchCount
+      Date loadedAt
+    }
+
+    Service ExperienceService {
+      @DashboardData getUserDashboard(@UserId userId) : read-only;
+      @SeriesSummary getSeriesDetail(@UserId userId, @SeriesId seriesId) : read-only;
+      @CatalogSearchResult searchSeries(String query, String genre, int page) : read-only;
+      @RecommendationView getTodaysRecommendation(@UserId userId) : read-only;
+    }
+  }
+}
+
+// ---- Teams ----
+
+BoundedContext BackendTeam {
+  type = TEAM
+  domainVisionStatement = "Time responsável pelos contextos de domínio backend: SeriesCatalog, UserTracking e Recommendation."
+  realizes SeriesCatalogContext, UserTrackingContext, RecommendationContext
+}
+
+BoundedContext FrontendTeam {
+  type = TEAM
+  domainVisionStatement = "Time responsável pelos contextos de experiência: ExperienceContext e ExperienceBFFContext."
+  realizes ExperienceContext, ExperienceBFFContext
+}
+
+// ---- Context Map ----
+
+ContextMap MediaTrackerMap {
+  type = SYSTEM_LANDSCAPE
+  state = TO_BE
+
+  contains SeriesCatalogContext, UserTrackingContext, RecommendationContext, ExperienceContext, ExperienceBFFContext
+
+  /* Relacionamentos de Domínio */
+
+  // UserTracking consome dados do catálogo para rastrear séries
+  UserTrackingContext [D,ACL] <- [U,OHS,PL] SeriesCatalogContext {
+    implementationTechnology = "RESTful HTTP, JSON"
+    description = "UserTracking consulta SeriesCatalog para validar séries e obter metadados"
+  }
+
+  // Recommendation consome lista "Quero Assistir" do UserTracking
+  RecommendationContext [D,ACL] <- [U,OHS,PL] UserTrackingContext {
+    implementationTechnology = "RESTful HTTP, JSON"
+    description = "Recommendation consulta UserTracking para obter séries com status WANT_TO_WATCH"
+  }
+
+  // Quando uma nova temporada é lançada, SeriesCatalog notifica UserTracking
+  SeriesCatalogContext [PUBLISHER] -> [SUBSCRIBER] UserTrackingContext {
+    implementationTechnology = "Domain Events via Message Queue"
+    description = "SeriesCatalog publica eventos de novas temporadas para UserTracking atualizar status"
+  }
+
+  /* Relacionamentos de Experiência */
+
+  // ExperienceBFF agrega dados de todos os contextos de domínio
+  ExperienceBFFContext [D,ACL] <- [U,OHS,PL] SeriesCatalogContext {
+    implementationTechnology = "RESTful HTTP, JSON"
+  }
+
+  ExperienceBFFContext [D,ACL] <- [U,OHS,PL] UserTrackingContext {
+    implementationTechnology = "RESTful HTTP, JSON"
+  }
+
+  ExperienceBFFContext [D,ACL] <- [U,OHS,PL] RecommendationContext {
+    implementationTechnology = "RESTful HTTP, JSON"
+  }
+
+  // Experience (Frontend) consome apenas o BFF
+  ExperienceContext [D,C] <- [U,S] ExperienceBFFContext {
+    implementationTechnology = "RESTful HTTP, JSON / GraphQL"
+    description = "Frontend consome APIs otimizadas do BFF, que por sua vez orquestra chamadas aos domínios"
+  }
+}
