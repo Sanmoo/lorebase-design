@@ -32,7 +32,7 @@ Domain MediaTracker {
 
     Entity Series {
       String title
-      String description
+      String seriesDescription
       String genre
       int totalSeasons
     }
@@ -159,39 +159,18 @@ ContextMap MediaTrackerMap {
   contains SeriesCatalogContext, UserTrackingContext, RecommendationContext, ExperienceContext, ExperienceBFFContext
 
   // UserTracking consome dados do catálogo para rastrear séries
-  UserTrackingContext [D,ACL] <- [U,OHS,PL] SeriesCatalogContext {
-    implementationTechnology = "RESTful HTTP, JSON"
-    description = "UserTracking consulta SeriesCatalog para validar séries e obter metadados"
-  }
+  UserTrackingContext [D,CF] <- [U,OHS,PL] SeriesCatalogContext
 
   // Recommendation consome lista "Quero Assistir" do UserTracking
-  RecommendationContext [D,ACL] <- [U,OHS,PL] UserTrackingContext {
-    implementationTechnology = "RESTful HTTP, JSON"
-    description = "Recommendation consulta UserTracking para obter séries com status WANT_TO_WATCH"
-  }
-
-  // Quando uma nova temporada é lançada, SeriesCatalog notifica UserTracking
-  SeriesCatalogContext [PUBLISHER] -> [SUBSCRIBER] UserTrackingContext {
-    implementationTechnology = "Domain Events via Message Queue"
-    description = "SeriesCatalog publica eventos de novas temporadas para UserTracking atualizar status"
-  }
+  RecommendationContext [D,CF] <- [U,OHS,PL] UserTrackingContext
 
   // ExperienceBFF agrega dados de todos os contextos de domínio
-  ExperienceBFFContext [D,ACL] <- [U,OHS,PL] SeriesCatalogContext {
-    implementationTechnology = "RESTful HTTP, JSON"
-  }
+  ExperienceBFFContext [D,CF] <- [U,OHS,PL] SeriesCatalogContext
 
-  ExperienceBFFContext [D,ACL] <- [U,OHS,PL] UserTrackingContext {
-    implementationTechnology = "RESTful HTTP, JSON"
-  }
+  ExperienceBFFContext [D,CF] <- [U,OHS,PL] UserTrackingContext
 
-  ExperienceBFFContext [D,ACL] <- [U,OHS,PL] RecommendationContext {
-    implementationTechnology = "RESTful HTTP, JSON"
-  }
+  ExperienceBFFContext [D,CF] <- [U,OHS,PL] RecommendationContext
 
   // Experience (Frontend) consome apenas o BFF
-  ExperienceContext [D,C] <- [U,S] ExperienceBFFContext {
-    implementationTechnology = "RESTful HTTP, JSON / GraphQL"
-    description = "Frontend consome APIs otimizadas do BFF, que por sua vez orquestra chamadas aos domínios"
-  }
+  ExperienceContext [D,C] <- [U,S] ExperienceBFFContext
 }
