@@ -1,18 +1,20 @@
 /* ============================================
-   Media Tracker - Domain Model (MVP Séries)
-   ============================================
+   Media Tracker - Domain Model (Séries + Filmes)
+   ==============================================
 
    Este arquivo contém a modelagem DDD completa do sistema
-   Media Tracker, focado no MVP de rastreamento de séries.
+   Media Tracker, cobrindo rastreamento de séries e filmes.
 
    Subdomínios:
    1. SeriesCatalog (SUPPORTING_DOMAIN) - Dados de séries
-   2. UserTracking (CORE_DOMAIN) - Rastreamento pessoal
-   3. Recommendation (CORE_DOMAIN) - Sistema de recomendação
-   4. UserExperience (CORE_DOMAIN) - Experiência do usuário
+   2. MovieCatalog (SUPPORTING_DOMAIN) - Dados de filmes
+   3. UserTracking (CORE_DOMAIN) - Rastreamento pessoal
+   4. Recommendation (CORE_DOMAIN) - Sistema de recomendação
+   5. UserExperience (CORE_DOMAIN) - Experiência do usuário
 
    Bounded Contexts:
    - SeriesCatalogContext (Backend)
+   - MovieCatalogContext (Backend)
    - UserTrackingContext (Backend)
    - RecommendationContext (Backend)
    - ExperienceContext (Frontend)
@@ -35,6 +37,19 @@ Domain MediaTracker {
       String seriesDescription
       String genre
       int totalSeasons
+    }
+  }
+
+  Subdomain MovieCatalog {
+    type = SUPPORTING_DOMAIN
+    domainVisionStatement = "Gerencia informações sobre filmes. Dados estruturais do conteúdo cinematográfico."
+
+    Entity Movie {
+      String title
+      String overview
+      String genre
+      int runtime
+      Date releaseDate
     }
   }
 
@@ -127,7 +142,7 @@ BoundedContext UserTrackingContext implements UserTracking {
 BoundedContext RecommendationContext implements Recommendation {
   type = FEATURE
   domainVisionStatement = "Contexto responsável por sugerir séries quando o usuário está ocioso, baseado em sua lista de interesse."
-  implementationTechnology = "Kotlin/Java, Spring Boot"
+  implementationTechnology = "Go in AWS Lambda"
   responsibilities = "Recommendations", "RandomSelection", "IdleSuggestions"
   knowledgeLevel = CONCRETE
 }
