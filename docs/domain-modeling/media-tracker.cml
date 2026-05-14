@@ -134,7 +134,7 @@ BoundedContext UserTrackingContext implements UserTracking {
     }
 
     ValueObject MediaType {
-      String type key
+      String value key
     }
 
     ValueObject SeasonRating {
