@@ -86,6 +86,14 @@ BoundedContext SeriesCatalogContext implements SeriesCatalog {
   knowledgeLevel = CONCRETE
 }
 
+BoundedContext MovieCatalogContext implements MovieCatalog {
+  type = FEATURE
+  domainVisionStatement = "Contexto responsável por gerenciar dados de filmes. Fonte da verdade sobre conteúdo cinematográfico disponível."
+  implementationTechnology = "Go / AWS Lambda"
+  responsibilities = "Movies", "Metadata"
+  knowledgeLevel = CONCRETE
+}
+
 BoundedContext UserTrackingContext implements UserTracking {
   type = FEATURE
   domainVisionStatement = "Contexto responsável por rastrear o progresso pessoal do usuário, status, avaliações e listas."
