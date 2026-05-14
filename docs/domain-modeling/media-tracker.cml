@@ -57,10 +57,11 @@ Domain MediaTracker {
     type = CORE_DOMAIN
     domainVisionStatement = "Permite ao usuário rastrear seu progresso, avaliar conteúdo e manter listas pessoais. Diferencial competitivo na organização pessoal."
 
-    Entity TrackedSeries {
-      String seriesId
+    Entity TrackedMedia {
+      String mediaId
+      String mediaType
       String status
-      int userRating
+      int rating
     }
   }
 
