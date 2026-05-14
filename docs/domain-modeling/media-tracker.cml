@@ -189,16 +189,20 @@ ContextMap MediaTrackerMap {
   type = SYSTEM_LANDSCAPE
   state = TO_BE
 
-  contains SeriesCatalogContext, UserTrackingContext, RecommendationContext, ExperienceContext, ExperienceBFFContext
+  contains SeriesCatalogContext, MovieCatalogContext, UserTrackingContext, RecommendationContext, ExperienceContext, ExperienceBFFContext
 
-  // UserTracking consome dados do catálogo para rastrear séries
+  // UserTracking consome dados dos catálogos para validar mídias
   UserTrackingContext [D,CF] <- [U,OHS,PL] SeriesCatalogContext
+
+  UserTrackingContext [D,CF] <- [U,OHS,PL] MovieCatalogContext
 
   // Recommendation consome lista "Quero Assistir" do UserTracking
   RecommendationContext [D,CF] <- [U,OHS,PL] UserTrackingContext
 
   // ExperienceBFF agrega dados de todos os contextos de domínio
   ExperienceBFFContext [D,CF] <- [U,OHS,PL] SeriesCatalogContext
+
+  ExperienceBFFContext [D,CF] <- [U,OHS,PL] MovieCatalogContext
 
   ExperienceBFFContext [D,CF] <- [U,OHS,PL] UserTrackingContext
 
