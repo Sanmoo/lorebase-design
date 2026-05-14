@@ -159,7 +159,7 @@ BoundedContext UserTrackingContext implements UserTracking {
 
 BoundedContext RecommendationContext implements Recommendation {
   type = FEATURE
-  domainVisionStatement = "Contexto responsável por sugerir séries quando o usuário está ocioso, baseado em sua lista de interesse."
+  domainVisionStatement = "Contexto responsável por sugerir conteúdo quando o usuário está ocioso, baseado em sua lista de interesse."
   implementationTechnology = "Go in AWS Lambda"
   responsibilities = "Recommendations", "RandomSelection", "IdleSuggestions"
   knowledgeLevel = CONCRETE
