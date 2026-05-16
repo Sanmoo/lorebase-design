@@ -11,16 +11,18 @@
    3. UserTracking (CORE_DOMAIN) - Rastreamento pessoal
    4. Recommendation (CORE_DOMAIN) - Sistema de recomendação
    5. UserExperience (CORE_DOMAIN) - Experiência do usuário
+   6. Social (CORE_DOMAIN) - Rede social e descoberta de usuários
 
    Bounded Contexts:
    - SeriesCatalogContext (Backend)
    - MovieCatalogContext (Backend)
    - UserTrackingContext (Backend)
    - RecommendationContext (Backend)
+   - SocialContext (Backend) - NOVO
    - ExperienceContext (Frontend)
    - ExperienceBFFContext (Backend for Frontend)
 
-   Gerado em: 2026-04-18
+   Atualizado em: 2026-05-16
    ============================================ */
 
 // ---- Domínio e Subdomínios ----
@@ -68,6 +70,28 @@ Domain MediaTracker {
   Subdomain Recommendation {
     type = CORE_DOMAIN
     domainVisionStatement = "Sugere conteúdo quando o usuário está ocioso, baseado em sua lista de interesse. Diferencial na descoberta de conteúdo."
+  }
+
+  Subdomain Social {
+    type = CORE_DOMAIN
+    domainVisionStatement = "Permite que usuários se conectem, sigam uns aos outros e descubram pessoas com interesses similares. Diferencial competitivo na dimensão social da plataforma."
+
+    Entity UserProfile {
+      String displayName
+      String avatarUrl
+      boolean isPublic
+    }
+
+    Entity FollowRelationship {
+      String followerId
+      String followedId
+    }
+
+    Entity ActivityEvent {
+      String activityType
+      String mediaId
+      String mediaType
+    }
   }
 
   Subdomain UserExperience {
@@ -157,6 +181,96 @@ BoundedContext UserTrackingContext implements UserTracking {
   }
 }
 
+BoundedContext SocialContext implements Social {
+  type = FEATURE
+  domainVisionStatement = "Contexto responsável por perfis públicos de usuários, grafo social (follow/unfollow), feed de atividades e descoberta de usuários com interesses similares."
+  implementationTechnology = "Go / AWS Lambda"
+  responsibilities = "UserProfiles", "SocialGraph", "ActivityFeed", "UserDiscovery"
+  knowledgeLevel = CONCRETE
+
+  Aggregate UserProfile {
+    responsibilities = "Representação pública de um usuário na rede social"
+    likelihoodForChange = NORMAL
+    contentVolatility = NORMAL
+
+    Entity UserProfile {
+      aggregateRoot
+
+      - UserId userId
+      String displayName
+      String avatarUrl
+      boolean isPublic
+      Date createdAt
+      Date updatedAt
+    }
+
+    ValueObject UserId {
+      String id key
+    }
+  }
+
+  Aggregate SocialGraph {
+    responsibilities = "Grafo de relacionamentos follow/unfollow entre usuários"
+    likelihoodForChange = NORMAL
+    contentVolatility = NORMAL
+
+    Entity FollowRelationship {
+      aggregateRoot
+
+      - UserId followerId
+      - UserId followedId
+      Date followedAt
+    }
+
+    ValueObject UserId {
+      String id key
+    }
+  }
+
+  Aggregate ActivityFeed {
+    responsibilities = "Feed cronológico de atividades dos usuários seguidos"
+    likelihoodForChange = NORMAL
+    contentVolatility = OFTEN
+
+    Entity ActivityEvent {
+      aggregateRoot
+
+      - EventId eventId
+      - UserId userId
+      ActivityType activityType
+      - MediaId mediaId
+      - MediaType mediaType
+      String mediaTitle
+      Date createdAt
+    }
+
+    ValueObject EventId {
+      String id key
+    }
+
+    ValueObject UserId {
+      String id key
+    }
+
+    ValueObject MediaId {
+      String id key
+    }
+
+    ValueObject MediaType {
+      String value key
+    }
+
+    enum ActivityType {
+      STARTED_WATCHING,  // Começou a assistir
+      RATED,             // Avaliou com nota
+      REVIEWED,          // Escreveu/revisou review
+      COMPLETED,         // Concluiu
+      DROPPED,           // Dropou
+      ADDED_TO_LIST      // Adicionou à lista
+    }
+  }
+}
+
 BoundedContext RecommendationContext implements Recommendation {
   type = FEATURE
   domainVisionStatement = "Contexto responsável por sugerir conteúdo quando o usuário está ocioso, baseado em sua lista de interesse."
@@ -189,7 +303,7 @@ ContextMap MediaTrackerMap {
   type = SYSTEM_LANDSCAPE
   state = TO_BE
 
-  contains SeriesCatalogContext, MovieCatalogContext, UserTrackingContext, RecommendationContext, ExperienceContext, ExperienceBFFContext
+  contains SeriesCatalogContext, MovieCatalogContext, UserTrackingContext, RecommendationContext, SocialContext, ExperienceContext, ExperienceBFFContext
 
   // UserTracking consome dados dos catálogos para validar mídias
   UserTrackingContext [D,CF] <- [U,OHS,PL] SeriesCatalogContext
@@ -207,6 +321,20 @@ ContextMap MediaTrackerMap {
   ExperienceBFFContext [D,CF] <- [U,OHS,PL] UserTrackingContext
 
   ExperienceBFFContext [D,CF] <- [U,OHS,PL] RecommendationContext
+
+  // UserTracking emite domain events que SocialContext consome (feed de atividades)
+  // UserTracking é UPSTREAM, SocialContext é DOWNSTREAM
+  SocialContext [D,CF] <- [U,OHS,PL] UserTrackingContext {
+    implementationTechnology = "Domain Events: TrackingActionCompleted"
+  }
+
+  // SocialContext consulta UserTracking para discovery de usuários similares
+  SocialContext [D,CF] <- [U,OHS,PL] UserTrackingContext {
+    implementationTechnology = "HTTP: GET /internal/summary/{userId}"
+  }
+
+  // ExperienceBFF agrega SocialContext para rotas sociais
+  ExperienceBFFContext [D,CF] <- [U,OHS,PL] SocialContext
 
   // Experience (Frontend) consome apenas o BFF
   ExperienceContext [D,C] <- [U,S] ExperienceBFFContext
