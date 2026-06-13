@@ -139,6 +139,46 @@ BoundedContext MovieCatalogContext implements MovieCatalog {
   knowledgeLevel = CONCRETE
 }
 
+BoundedContext GameCatalogContext implements GameCatalog {
+  type = FEATURE
+  domainVisionStatement = "Contexto responsável por gerenciar dados de jogos eletrônicos. Fonte da verdade sobre metadados de jogos disponíveis."
+  implementationTechnology = "Go / AWS Lambda"
+  responsibilities = "Games", "Platforms", "Companies", "Franchises", "GameModes", "IGDBIntegration", "Metadata"
+  knowledgeLevel = CONCRETE
+
+  Aggregate GameCatalog {
+    responsibilities = "Catálogo de jogos eletrônicos e metadados normalizados a partir da IGDB"
+    likelihoodForChange = NORMAL
+    contentVolatility = OFTEN
+
+    Entity Game {
+      aggregateRoot
+
+      - GameId gameId
+      String title
+      String summary
+      String genre
+      String coverUrl
+      Date releaseDate
+      String platforms
+      String developer
+      String publisher
+      String franchise
+      String gameModes
+      String igdbId
+      Date lastUpdated
+    }
+
+    ValueObject GameId {
+      String id key
+    }
+
+    ValueObject ProviderGameId {
+      String id key
+    }
+  }
+}
+
 BoundedContext UserTrackingContext implements UserTracking {
   type = FEATURE
   domainVisionStatement = "Contexto responsável por rastrear o progresso pessoal do usuário, status, avaliações e listas de qualquer tipo de mídia."
