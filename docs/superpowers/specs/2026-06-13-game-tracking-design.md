@@ -278,9 +278,13 @@ No direct dependency from `SocialContext` to `GameCatalogContext` is required fo
 
 ---
 
-## 7. Context Map Update
+## 7. Domain Modeling Artifacts
 
-The CML model should be updated to add:
+The implementation must update the existing Context Mapper model and regenerate the derived diagram artifacts.
+
+### 7.1 Rewrite `media-tracker.cml`
+
+Rewrite `docs/domain-modeling/media-tracker.cml` so the model includes:
 
 - `GameCatalog` subdomain;
 - `GameCatalogContext` bounded context;
@@ -292,6 +296,17 @@ The CML model should be updated to add:
   - `ExperienceBFFContext` consumes `GameCatalogContext`;
   - `ExperienceBFFContext` continues to consume `UserTrackingContext`;
   - `ExperienceContext` continues to consume only the BFF.
+
+The rewrite should preserve the existing series, movie, tracking, recommendation, social, BFF, and frontend contexts while adding game support consistently.
+
+### 7.2 Regenerate context map diagrams
+
+After updating the CML, regenerate the Context Mapper diagram outputs under `docs/domain-modeling/`, including at minimum:
+
+- `media-tracker_ContextMap.gv`;
+- `media-tracker_ContextMap.png`.
+
+If the existing workflow also produces `media-tracker_ContextMap.svg`, regenerate it as well so all checked-in derived artifacts remain synchronized with `media-tracker.cml`.
 
 ---
 
@@ -329,7 +344,8 @@ The design is complete when:
 4. Game tracking supports `selectedPlatform` and `hoursPlayed`.
 5. IGDB/Twitch API is the selected provider, isolated behind `GameMetadataProvider`.
 6. BFF routes for game search/detail and game tracking are specified.
-7. CML update requirements are explicit.
+7. `docs/domain-modeling/media-tracker.cml` rewrite requirements are explicit.
+8. Regeneration of `media-tracker_ContextMap.gv`, `media-tracker_ContextMap.png`, and existing SVG outputs is explicit.
 
 ---
 
