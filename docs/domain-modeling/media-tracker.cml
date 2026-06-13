@@ -334,6 +334,7 @@ BoundedContext SocialContext implements Social {
 
     enum ActivityType {
       STARTED_WATCHING,  // Começou a assistir
+      STARTED_PLAYING,   // Começou a jogar
       RATED,             // Avaliou com nota
       REVIEWED,          // Escreveu/revisou review
       COMPLETED,         // Concluiu
@@ -345,7 +346,7 @@ BoundedContext SocialContext implements Social {
 
 BoundedContext RecommendationContext implements Recommendation {
   type = FEATURE
-  domainVisionStatement = "Contexto responsável por sugerir conteúdo quando o usuário está ocioso, baseado em sua lista de interesse."
+  domainVisionStatement = "Contexto responsável por sugerir conteúdo quando o usuário está ocioso, baseado em sua lista de interesse, incluindo séries, filmes e jogos."
   implementationTechnology = "Go in AWS Lambda"
   responsibilities = "Recommendations", "RandomSelection", "IdleSuggestions"
   knowledgeLevel = CONCRETE
