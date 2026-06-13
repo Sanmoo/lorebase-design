@@ -1,28 +1,30 @@
 /* ============================================
-   Media Tracker - Domain Model (Séries + Filmes)
-   ==============================================
+   Media Tracker - Domain Model (Séries + Filmes + Jogos)
+   ======================================================
 
    Este arquivo contém a modelagem DDD completa do sistema
-   Media Tracker, cobrindo rastreamento de séries e filmes.
+   Media Tracker, cobrindo rastreamento de séries, filmes e jogos eletrônicos.
 
    Subdomínios:
    1. SeriesCatalog (SUPPORTING_DOMAIN) - Dados de séries
    2. MovieCatalog (SUPPORTING_DOMAIN) - Dados de filmes
-   3. UserTracking (CORE_DOMAIN) - Rastreamento pessoal
-   4. Recommendation (CORE_DOMAIN) - Sistema de recomendação
-   5. UserExperience (CORE_DOMAIN) - Experiência do usuário
-   6. Social (CORE_DOMAIN) - Rede social e descoberta de usuários
+   3. GameCatalog (SUPPORTING_DOMAIN) - Dados de jogos eletrônicos
+   4. UserTracking (CORE_DOMAIN) - Rastreamento pessoal
+   5. Recommendation (CORE_DOMAIN) - Sistema de recomendação
+   6. UserExperience (CORE_DOMAIN) - Experiência do usuário
+   7. Social (CORE_DOMAIN) - Rede social e descoberta de usuários
 
    Bounded Contexts:
    - SeriesCatalogContext (Backend)
    - MovieCatalogContext (Backend)
+   - GameCatalogContext (Backend) - NOVO
    - UserTrackingContext (Backend)
    - RecommendationContext (Backend)
-   - SocialContext (Backend) - NOVO
+   - SocialContext (Backend)
    - ExperienceContext (Frontend)
    - ExperienceBFFContext (Backend for Frontend)
 
-   Atualizado em: 2026-05-16
+   Atualizado em: 2026-06-13
    ============================================ */
 
 // ---- Domínio e Subdomínios ----
@@ -52,6 +54,25 @@ Domain MediaTracker {
       String genre
       int runtime
       Date releaseDate
+    }
+  }
+
+  Subdomain GameCatalog {
+    type = SUPPORTING_DOMAIN
+    domainVisionStatement = "Gerencia informações sobre jogos eletrônicos. Dados estruturais de catálogo, plataformas, empresas, franquias e modos de jogo."
+
+    Entity Game {
+      String title
+      String summary
+      String genre
+      String coverUrl
+      Date releaseDate
+      String platforms
+      String developer
+      String publisher
+      String franchise
+      String gameModes
+      String igdbId
     }
   }
 
