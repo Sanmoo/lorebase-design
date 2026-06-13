@@ -181,7 +181,7 @@ BoundedContext GameCatalogContext implements GameCatalog {
 
 BoundedContext UserTrackingContext implements UserTracking {
   type = FEATURE
-  domainVisionStatement = "Contexto responsável por rastrear o progresso pessoal do usuário, status, avaliações e listas de qualquer tipo de mídia."
+  domainVisionStatement = "Contexto responsável por rastrear o progresso pessoal do usuário, status, avaliações, reviews e preferências específicas de cada tipo de mídia."
   implementationTechnology = "Go / AWS Lambda"
   responsibilities = "Tracking", "Ratings", "UserLists", "Progress"
   knowledgeLevel = CONCRETE
@@ -199,9 +199,12 @@ BoundedContext UserTrackingContext implements UserTracking {
       - MediaId mediaId
       - MediaType mediaType
       TrackingStatus status
+      GameTrackingStatus gameStatus
       - List<SeasonRating> seasonRatings
       Integer rating // 1-10, nullable
       String review
+      String selectedPlatform // Jogos: plataforma escolhida pelo usuário
+      int hoursPlayed // Jogos: horas jogadas, não negativo
       Date addedAt
       Date lastUpdated
     }
@@ -229,7 +232,7 @@ BoundedContext UserTrackingContext implements UserTracking {
     }
 
     enum MediaTypeEnum {
-      SERIES, MOVIE
+      SERIES, MOVIE, GAME
     }
 
     enum TrackingStatus {
@@ -238,6 +241,14 @@ BoundedContext UserTrackingContext implements UserTracking {
       WATCHING,         // Assistindo
       COMPLETED,        // Concluída
       DROPPED           // Dropada
+    }
+
+    enum GameTrackingStatus {
+      aggregateLifecycle
+      WANT_TO_PLAY,     // Quero Jogar
+      PLAYING,          // Jogando
+      COMPLETED,        // Concluído/Zerado
+      DROPPED           // Dropado
     }
   }
 }
